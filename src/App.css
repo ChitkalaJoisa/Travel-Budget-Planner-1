@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+/* 1. Reset everything to be truly transparent */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  width: 100%;
+}
+
+body {
+  /* This is your only solid background. Everything else must be transparent. */
+  background-image: url('https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?auto=format&fit=crop&q=80&w=2070') !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-attachment: fixed !important;
+  background-repeat: no-repeat !important;
+}
+
+/* 2. KILL the white highlight globally */
+#root, main, section, div:not(.bento-card, .bg-blue-600) {
+  background-color: transparent !important;
+}
+
+/* 3. Refined Glass Effect (No more solid white blocks) */
+.bento-card {
+  background: rgba(255, 255, 255, 0.25) !important; /* Lower opacity */
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 2.5rem;
+  padding: 2rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+/* Fix for the blue card on the left of your dashboard */
+.bg-blue-600 {
+  background-color: rgba(37, 99, 235, 0.8) !important;
+  backdrop-filter: blur(8px);
+}
