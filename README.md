@@ -1,3 +1,4 @@
+<<<<<<< HEAD
  TravelWise: Budget Planner & Expense Visualizer
 
 A premium, full-stack web application designed for travelers to plan, track, and visualize their trip finances with a futuristic Bento-grid interface.
@@ -36,4 +37,3 @@ A premium, full-stack web application designed for travelers to plan, track, and
     ```bash
     npm run dev
     ```
-

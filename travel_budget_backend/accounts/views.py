@@ -5,6 +5,11 @@ from .serializers import RegisterSerializer
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import IsAuthenticated
+from django.core.validators import validate_email
+from django.core.exceptions import ValidationError
+import random
+from django.core.mail import send_mail
+from django.conf import settings
 
 # Generate JWT Token
 def get_tokens(user):
@@ -82,3 +87,63 @@ def change_password(request):
     user.save()
 
     return Response({"message": "Password updated successfully"})
+
+@api_view(['POST'])
+def login_user(request):
+    email = request.data.get("email")
+    password = request.data.get("password")
+
+    # Validate email format
+    try:
+        validate_email(email)
+    except ValidationError:
+        return Response({"error": "Invalid email format"}, status=400)
+
+    from django.contrib.auth.models import User
+    user = User.objects.filter(email=email).first()
+
+    if user and user.check_password(password):
+        tokens = get_tokens(user)
+        return Response({
+            "message": "Login successful",
+            "tokens": tokens
+        })
+
+    return Response({"error": "Invalid credentials"}, status=400)
+
+otp_store = {}
+
+@api_view(['POST'])
+def send_otp(request):
+    email = request.data.get("email")
+
+    if not email:
+        return Response({"error": "Email required"}, status=400)
+
+    otp = random.randint(100000, 999999)
+    otp_store[email] = otp
+
+    try:
+        send_mail(
+            'Your OTP Code',
+            f'Your OTP is {otp}',
+            settings.EMAIL_HOST_USER,   # ✅ IMPORTANT
+            [email],
+            fail_silently=False,
+        )
+
+        return Response({"message": "OTP sent successfully"})
+
+    except Exception as e:
+        print("EMAIL ERROR:", str(e))  # 👈 VERY IMPORTANT
+        return Response({"error": "Failed to send OTP"}, status=500)
+
+@api_view(['POST'])
+def verify_otp(request):
+    email = request.data.get("email")
+    otp = int(request.data.get("otp"))
+
+    if otp_store.get(email) != otp:
+        return Response({"error": "Invalid OTP"}, status=400)
+
+    return Response({"message": "OTP verified"})

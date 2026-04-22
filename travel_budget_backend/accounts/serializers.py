@@ -44,3 +44,22 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data['password']
         )
         return user
+
+    class RegisterSerializer(serializers.ModelSerializer):
+        class Meta:
+            model = User
+            fields = ['first_name', 'email', 'password']
+
+    def validate_email(self, value):
+        # Format validation
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", value):
+            raise serializers.ValidationError("Invalid email format")
+
+        # Block fake domains
+        fake_domains = ["tempmail.com", "mailinator.com", "10minutemail.com"]
+        domain = value.split("@")[1]
+
+        if domain in fake_domains:
+            raise serializers.ValidationError("Temporary emails are not allowed")
+
+        return value
