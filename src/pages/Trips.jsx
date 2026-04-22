@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, Calendar, Globe, X } from 'lucide-react';
 
@@ -15,39 +14,67 @@ export default function Trips() {
     amount: ''
   });
 
+  const token = localStorage.getItem("access");
+
   // ✅ FETCH TRIPS
   const fetchTrips = async () => {
-    const res = await fetch("http://127.0.0.1:8000/api/trips/");
-    const data = await res.json();
-    setTrips(data);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/trips/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setTrips(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ✅ FETCH EXPENSES BY TRIP
   const fetchExpenses = async (tripId) => {
-    const res = await fetch(`http://127.0.0.1:8000/api/expenses/?trip=${tripId}`);
-    const data = await res.json();
-    setExpenses(data);
+    try {
+      const res = await fetch(
+        `http://127.0.0.1:8000/api/expenses/?trip=${tripId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+      setExpenses(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ✅ ADD TRIP
   const addTrip = async (e) => {
     e.preventDefault();
 
-    await fetch("http://127.0.0.1:8000/api/trips/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: form.dest,
-        budget: parseFloat(form.budget),
-        user: 1
-      }),
-    });
+    try {
+      await fetch("http://127.0.0.1:8000/api/trips/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: form.dest,
+          budget: parseFloat(form.budget),
+        }),
+      });
 
-    fetchTrips();
-    setIsModalOpen(false);
-    setForm({ dest: '', date: '', budget: '' });
+      fetchTrips();
+      setIsModalOpen(false);
+      setForm({ dest: '', date: '', budget: '' });
+
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ✅ ADD EXPENSE
@@ -59,20 +86,26 @@ export default function Trips() {
       return;
     }
 
-    await fetch("http://127.0.0.1:8000/api/expenses/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        category: expenseForm.category,
-        amount: parseFloat(expenseForm.amount),
-        trip: selectedTrip.id
-      }),
-    });
+    try {
+      await fetch("http://127.0.0.1:8000/api/expenses/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          category: expenseForm.category,
+          amount: parseFloat(expenseForm.amount),
+          trip: selectedTrip.id,
+        }),
+      });
 
-    fetchExpenses(selectedTrip.id);
-    setExpenseForm({ category: '', amount: '' });
+      fetchExpenses(selectedTrip.id);
+      setExpenseForm({ category: '', amount: '' });
+
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ✅ LOAD TRIPS
@@ -85,11 +118,11 @@ export default function Trips() {
 
       {/* HEADER */}
       <div className="flex justify-between items-center mb-12">
-        <h2 className="text-5xl font-black text-slate-900">Journeys</h2>
+        <h2 className="text-5xl font-black text-white">Journeys</h2>
 
         <button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 text-white px-8 py-4 rounded-3xl font-black"
+          className="bg-blue-600 text-white px-8 py-4 rounded-3xl font-black flex items-center gap-2"
         >
           <Plus size={20} /> New Trip
         </button>
@@ -97,26 +130,24 @@ export default function Trips() {
 
       {/* TRIPS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {trips.map((trip) => (
+        {Array.isArray(trips) && trips.map((trip) => (
           <div 
             key={trip.id}
-            className="bento-card cursor-pointer"
+            className="bento-card cursor-pointer text-white"
             onClick={() => {
               setSelectedTrip(trip);
               fetchExpenses(trip.id);
             }}
           >
-            <div className="mb-4">
-              <Globe size={28} />
-            </div>
+            <Globe size={28} className="mb-4" />
 
             <h3 className="text-xl font-bold">{trip.name}</h3>
 
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-300 flex items-center gap-2">
               <Calendar size={14} /> {trip.date || "No Date"}
             </p>
 
-            <p className="mt-4 font-bold text-blue-600">
+            <p className="mt-4 font-bold text-blue-400">
               ₹{trip.budget}
             </p>
           </div>
@@ -127,22 +158,22 @@ export default function Trips() {
       {selectedTrip && (
         <div className="mt-10">
 
-          <h2 className="text-2xl font-bold mb-4">
+          <h2 className="text-2xl font-bold mb-4 text-white">
             Expenses for {selectedTrip.name}
           </h2>
 
           {expenses.length === 0 ? (
-            <p>No expenses yet</p>
+            <p className="text-white">No expenses yet</p>
           ) : (
             expenses.map((exp) => (
-              <div key={exp.id} className="border p-3 rounded mb-2">
+              <div key={exp.id} className="border p-3 rounded mb-2 text-white">
                 {exp.category} - ₹{exp.amount}
               </div>
             ))
           )}
 
           {/* ADD EXPENSE FORM */}
-          <form onSubmit={addExpense} className="mt-6 flex gap-4">
+          <form onSubmit={addExpense} className="mt-6 flex gap-4 text-white">
 
             <input
               required
@@ -175,15 +206,20 @@ export default function Trips() {
 
       {/* MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40">
 
-          <div className="bg-white p-6 rounded-xl w-96">
+          <div className="bento-card w-full max-w-md relative">
 
-            <button onClick={() => setIsModalOpen(false)}>
+            <button 
+              onClick={() => setIsModalOpen(false)} 
+              className="absolute top-4 right-4 text-white"
+            >
               <X />
             </button>
 
-            <h3 className="text-xl font-bold mb-4">Add Trip</h3>
+            <h3 className="text-2xl font-black text-white mb-6">
+              Add Trip
+            </h3>
 
             <form onSubmit={addTrip} className="space-y-4">
 
@@ -211,7 +247,7 @@ export default function Trips() {
                 onChange={(e) => setForm({ ...form, budget: e.target.value })}
               />
 
-              <button className="w-full bg-black text-white py-3 rounded">
+              <button className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">
                 Save
               </button>
 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, IndianRupee, X } from 'lucide-react';
 
@@ -9,44 +8,69 @@ export default function Expenses() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form, setForm] = useState({
     category: 'Food',
-    note: '',
     amount: '',
     trip: ''
   });
 
+  const token = localStorage.getItem("access");
+
   // ✅ FETCH EXPENSES
   const fetchExpenses = async () => {
-    const res = await fetch("http://127.0.0.1:8000/api/expenses/");
-    const data = await res.json();
-    setExpenses(data);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/expenses/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setExpenses(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ✅ FETCH TRIPS (for dropdown)
   const fetchTrips = async () => {
-    const res = await fetch("http://127.0.0.1:8000/api/trips/");
-    const data = await res.json();
-    setTrips(data);
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/trips/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setTrips(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  // ✅ ADD EXPENSE (POST)
+  // ✅ ADD EXPENSE
   const addExpense = async (e) => {
     e.preventDefault();
 
-    await fetch("http://127.0.0.1:8000/api/expenses/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        category: form.category,
-        amount: parseFloat(form.amount),
-        trip: form.trip
-      }),
-    });
+    try {
+      await fetch("http://127.0.0.1:8000/api/expenses/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`, // ✅ IMPORTANT
+        },
+        body: JSON.stringify({
+          category: form.category,
+          amount: parseFloat(form.amount),
+          trip: form.trip,
+        }),
+      });
 
-    fetchExpenses();
-    setIsModalOpen(false);
-    setForm({ category: 'Food', note: '', amount: '', trip: '' });
+      fetchExpenses();
+      setIsModalOpen(false);
+      setForm({ category: 'Food', amount: '', trip: '' });
+
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // ✅ LOAD DATA
@@ -82,7 +106,7 @@ export default function Expenses() {
           </thead>
 
           <tbody>
-            {expenses.map((exp) => (
+            {Array.isArray(expenses) && expenses.map((exp) => (
               <tr key={exp.id} className="border-b border-white/10">
                 <td className="p-6 text-white">{exp.category}</td>
                 <td className="p-6 text-emerald-400 font-bold">₹{exp.amount}</td>
@@ -122,7 +146,7 @@ export default function Expenses() {
                 }
               >
                 <option value="">Select Trip</option>
-                {trips.map((t) => (
+                {Array.isArray(trips) && trips.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.name}
                   </option>

@@ -16,52 +16,68 @@ export default function Dashboard() {
   });
 
   // ✅ FETCH TRIPS
-  const fetchTrips = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/trips/");
-      const data = await res.json();
-      setTrips(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+const fetchTrips = async () => {
+  try {
+    const token = localStorage.getItem("access");
+
+    const res = await fetch("http://127.0.0.1:8000/api/trips/", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    setTrips(Array.isArray(data) ? data : []);  // ✅ FIX ALSO HERE
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   // ✅ FETCH EXPENSES
-  const fetchExpenses = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/expenses/");
-      const data = await res.json();
-      setExpenses(data);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+const fetchExpenses = async () => {
+  try {
+    const token = localStorage.getItem("access");
+
+    const res = await fetch("http://127.0.0.1:8000/api/expenses/", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    setExpenses(Array.isArray(data) ? data : []);  // ✅ FIX
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   // ✅ ADD TRIP (POST)
-  const handleAddTrip = async (e) => {
-    e.preventDefault();
+const handleAddTrip = async (e) => {
+  e.preventDefault();
 
-    try {
-      await fetch("http://127.0.0.1:8000/api/trips/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: newTrip.destination,
-          budget: parseFloat(newTrip.budget),
-          user: 1,
-        }),
-      });
+  try {
+    const token = localStorage.getItem("access");
 
-      fetchTrips();
-      setShowTripModal(false);
-      setNewTrip({ destination: '', budget: '', date: '' });
+    await fetch("http://127.0.0.1:8000/api/trips/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`, // ✅ IMPORTANT
+      },
+      body: JSON.stringify({
+        name: newTrip.destination,
+        budget: parseFloat(newTrip.budget),
+      }),
+    });
 
-    } catch (err) {
-      console.error(err);
-    }
-  };
+    fetchTrips();
+    setShowTripModal(false);
+    setNewTrip({ destination: '', budget: '', date: '' });
+
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   // ✅ LOAD DATA
   useEffect(() => {
