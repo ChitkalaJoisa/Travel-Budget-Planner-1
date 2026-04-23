@@ -4,7 +4,6 @@ from django.shortcuts import render
 from rest_framework import viewsets
 from .models import Trip, Expense
 from .serializers import TripSerializer, ExpenseSerializer
-
 from rest_framework.permissions import IsAuthenticated
 
 class TripViewSet(viewsets.ModelViewSet):

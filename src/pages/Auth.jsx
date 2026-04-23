@@ -9,10 +9,10 @@ export default function Auth({ onLogin }) {
   const [otp, setOtp] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
 
+  // ✅ HANDLE SUBMIT
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 🔒 BLOCK REGISTER if OTP not verified
     if (!isLogin && !otpVerified) {
       alert("Please verify OTP before creating account");
       return;
@@ -57,59 +57,99 @@ export default function Auth({ onLogin }) {
         data.password?.[0] ||
         data.error ||
         "Something went wrong";
+
       alert(errorMsg);
     }
   };
 
-  // ✅ SEND OTP
+  // ✅ SEND OTP (FIXED)
   const sendOtp = async () => {
     if (!email) {
       alert("Enter email first");
       return;
     }
 
-    await fetch("http://127.0.0.1:8000/api/auth/send-otp/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/auth/send-otp/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
 
-    alert("OTP sent to your email");
-    setOtpSent(true);
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("OTP sent to your email");
+        setOtpSent(true);
+      } else {
+        alert(data.error || "Failed to send OTP");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error while sending OTP");
+    }
   };
 
-  // ✅ VERIFY OTP
+  // ✅ VERIFY OTP (FIXED)
   const verifyOtp = async () => {
-    const res = await fetch("http://127.0.0.1:8000/api/auth/verify-otp/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, otp }),
-    });
+    if (!otp) {
+      alert("Enter OTP");
+      return;
+    }
 
-    if (res.ok) {
-      alert("OTP verified");
-      setOtpVerified(true);
-    } else {
-      alert("Invalid OTP");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/auth/verify-otp/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email,
+          otp: otp.trim(),   // ✅ IMPORTANT FIX
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("OTP verified successfully");
+        setOtpVerified(true);
+      } else {
+        alert(data.error || "Invalid OTP");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server error during OTP verification");
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-slate-50/50">
       <div className="bento-card w-full max-w-md animate-fade-in">
+
         <h2 className="text-4xl font-black mb-2 text-slate-900">
           {isLogin ? 'Welcome Back' : 'Join Us'}
         </h2>
+
         <p className="text-slate-500 mb-8 font-medium">
           {isLogin ? 'Login to manage your trips' : 'Create an account to start planning'}
         </p>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
+
           {!isLogin && (
-            <input name="name" type="text" placeholder="Full Name" className="input-field" required />
+            <input
+              name="name"
+              type="text"
+              placeholder="Full Name"
+              className="input-field"
+              required
+            />
           )}
 
-          {/* EMAIL INPUT */}
+          {/* EMAIL */}
           <input
             name="email"
             type="email"
@@ -117,14 +157,10 @@ export default function Auth({ onLogin }) {
             className="input-field"
             required
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setOtpSent(false);
-              setOtpVerified(false);
-            }}
+            onChange={(e) => setEmail(e.target.value)}
           />
 
-          {/* OTP UI (REGISTER ONLY) */}
+          {/* OTP SECTION */}
           {!isLogin && (
             <>
               {!otpSent ? (
@@ -183,24 +219,28 @@ export default function Auth({ onLogin }) {
 
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black shadow-xl shadow-blue-500/20 transition-all active:scale-95"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl font-black shadow-xl"
           >
             {isLogin ? 'LOGIN' : 'CREATE ACCOUNT'}
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
+        <div className="mt-8 pt-6 border-t text-center">
           <button
             onClick={() => {
               setIsLogin(!isLogin);
               setOtpSent(false);
               setOtpVerified(false);
+              setOtp("");
             }}
             className="text-sm font-bold text-blue-600 hover:underline"
           >
-            {isLogin ? "Don't have an account? Register here" : "Already have an account? Login here"}
+            {isLogin
+              ? "Don't have an account? Register here"
+              : "Already have an account? Login here"}
           </button>
         </div>
+
       </div>
     </div>
   );

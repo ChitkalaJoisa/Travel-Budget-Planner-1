@@ -30,7 +30,7 @@ export default function Expenses() {
     }
   };
 
-  // ✅ FETCH TRIPS (for dropdown)
+  // ✅ FETCH TRIPS
   const fetchTrips = async () => {
     try {
       const res = await fetch("http://127.0.0.1:8000/api/trips/", {
@@ -55,7 +55,7 @@ export default function Expenses() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`, // ✅ IMPORTANT
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           category: form.category,
@@ -73,7 +73,6 @@ export default function Expenses() {
     }
   };
 
-  // ✅ LOAD DATA
   useEffect(() => {
     fetchExpenses();
     fetchTrips();
@@ -106,14 +105,15 @@ export default function Expenses() {
           </thead>
 
           <tbody>
-            {Array.isArray(expenses) && expenses.map((exp) => (
+            {Array.isArray(expenses) && expenses.map((exp, index) => (
               <tr key={exp.id} className="border-b border-white/10">
                 <td className="p-6 text-white">{exp.category}</td>
                 <td className="p-6 text-emerald-400 font-bold">₹{exp.amount}</td>
-                <td className="p-6 text-white/70">{exp.trip}</td>
+                <td className="p-6 text-white/70">{index + 1}</td>
               </tr>
             ))}
           </tbody>
+
         </table>
       </div>
 
@@ -136,7 +136,7 @@ export default function Expenses() {
 
             <form onSubmit={addExpense} className="space-y-4">
 
-              {/* TRIP SELECT */}
+              {/* ✅ UPDATED DROPDOWN */}
               <select
                 required
                 className="input-glass"
@@ -146,14 +146,14 @@ export default function Expenses() {
                 }
               >
                 <option value="">Select Trip</option>
+
                 {Array.isArray(trips) && trips.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.name}
+                    {t.name || `Trip ${t.id}`}
                   </option>
                 ))}
               </select>
 
-              {/* CATEGORY */}
               <select
                 className="input-glass"
                 value={form.category}
@@ -168,7 +168,6 @@ export default function Expenses() {
                 <option>Misc</option>
               </select>
 
-              {/* AMOUNT */}
               <div className="relative">
                 <IndianRupee className="absolute left-4 top-4 text-white/40" />
                 <input

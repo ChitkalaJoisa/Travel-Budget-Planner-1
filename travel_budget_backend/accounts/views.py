@@ -141,9 +141,21 @@ def send_otp(request):
 @api_view(['POST'])
 def verify_otp(request):
     email = request.data.get("email")
-    otp = int(request.data.get("otp"))
+    otp = request.data.get("otp")
 
-    if otp_store.get(email) != otp:
+    # ✅ Check missing fields
+    if not email or not otp:
+        return Response({"error": "Email and OTP required"}, status=400)
+
+    # ✅ Convert both to string for safe comparison
+    stored_otp = str(otp_store.get(email))
+    entered_otp = str(otp)
+
+    if stored_otp != entered_otp:
         return Response({"error": "Invalid OTP"}, status=400)
 
-    return Response({"message": "OTP verified"})
+    # ✅ Optional: delete OTP after success
+    otp_store.pop(email, None)
+
+    return Response({"message": "OTP verified successfully"})
+
