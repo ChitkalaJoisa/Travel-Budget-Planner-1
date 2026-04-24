@@ -4,7 +4,7 @@ from .models import Trip, Expense
 class TripSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
-        fields = ['id', 'name', 'budget']
+        fields = ['id', 'name', 'budget', 'start_date', 'end_date']
 
 class ExpenseSerializer(serializers.ModelSerializer):
     class Meta:

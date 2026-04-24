@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, Globe, X } from 'lucide-react';
+import { Plus, Calendar, Globe, X, Pencil, Trash2 } from 'lucide-react';
 
 export default function Trips() {
   const [trips, setTrips] = useState([]);
@@ -7,7 +7,16 @@ export default function Trips() {
   const [selectedTrip, setSelectedTrip] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [form, setForm] = useState({ dest: '', date: '', budget: '' });
+  const [editId, setEditId] = useState(null);
+  const [conflictTrip, setConflictTrip] = useState(null); // ✅ NEW
+
+  // ✅ UPDATED FORM
+  const [form, setForm] = useState({
+    dest: '',
+    start_date: '',
+    end_date: '',
+    budget: ''
+  });
 
   const [expenseForm, setExpenseForm] = useState({
     category: '',
@@ -18,64 +27,140 @@ export default function Trips() {
 
   // ✅ FETCH TRIPS
   const fetchTrips = async () => {
-    try {
-      const res = await fetch("http://127.0.0.1:8000/api/trips/", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      const data = await res.json();
-      setTrips(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-    }
+    const res = await fetch("http://127.0.0.1:8000/api/trips/", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setTrips(Array.isArray(data) ? data : []);
   };
 
-  // ✅ FETCH EXPENSES BY TRIP
+  // ✅ FETCH EXPENSES
+  const fetchAllExpenses = async () => {
+    const res = await fetch("http://127.0.0.1:8000/api/expenses/", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    setExpenses(Array.isArray(data) ? data : []);
+  };
+
   const fetchExpenses = async (tripId) => {
-    try {
-      const res = await fetch(
-        `http://127.0.0.1:8000/api/expenses/?trip=${tripId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-      setExpenses(Array.isArray(data) ? data : []);
-    } catch (err) {
-      console.error(err);
-    }
+    const res = await fetch(
+      `http://127.0.0.1:8000/api/expenses/?trip=${tripId}`,
+      {
+        headers: { Authorization: `Bearer ${token}` },
+      }
+    );
+    const data = await res.json();
+    setExpenses(Array.isArray(data) ? data : []);
   };
 
-  // ✅ ADD TRIP
+  // ✅ TOTAL EXPENSE
+  const getTotalExpense = (tripId) => {
+    return expenses
+      .filter((e) => e.trip === tripId)
+      .reduce((sum, e) => sum + Number(e.amount), 0);
+  };
+
+  // ✅ ADD / UPDATE TRIP
   const addTrip = async (e) => {
     e.preventDefault();
 
-    try {
-      await fetch("http://127.0.0.1:8000/api/trips/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: form.dest,
-          budget: parseFloat(form.budget),
-        }),
-      });
-
-      fetchTrips();
-      setIsModalOpen(false);
-      setForm({ dest: '', date: '', budget: '' });
-
-    } catch (err) {
-      console.error(err);
+    // 🔥 VALIDATION 1
+    if (form.end_date < form.start_date) {
+      alert("End date cannot be before start date");
+      return;
     }
+
+    // 🔥 VALIDATION 2 (THIS IS WHAT YOU ARE MISSING)
+    if (conflictTrip) {
+      alert(`You already have a trip to ${conflictTrip.name}`);
+      return; // ⛔ STOP HERE → prevents saving
+    }
+
+    const url = editId
+      ? `http://127.0.0.1:8000/api/trips/${editId}/`
+      : "http://127.0.0.1:8000/api/trips/";
+
+    const method = editId ? "PUT" : "POST";
+
+    await fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        name: form.dest,
+        start_date: form.start_date,
+        end_date: form.end_date,
+        budget: parseFloat(form.budget),
+      }),
+    });
+
+    fetchTrips();
+    fetchAllExpenses();
+    setIsModalOpen(false);
+    setForm({ dest: '', start_date: '', end_date: '', budget: '' });
+    setEditId(null);
   };
+
+  // ✅ DELETE TRIP
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm("Delete this trip?");
+    if (!confirmDelete) return;
+
+    await fetch(`http://127.0.0.1:8000/api/trips/${id}/`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    fetchTrips();
+    fetchAllExpenses();
+  };
+
+  // ✅ EDIT TRIP
+  const handleEdit = (trip) => {
+    setForm({
+      dest: trip.name,
+      start_date: trip.start_date || '',
+      end_date: trip.end_date || '',
+      budget: trip.budget
+    });
+
+    setEditId(trip.id);
+    setIsModalOpen(true);
+  };
+
+  const checkDateConflict = (start, end) => {
+    if (!start || !end) return null;
+
+    const newStart = new Date(start);
+    const newEnd = new Date(end);
+
+    for (let trip of trips) {
+      // ignore same trip while editing
+      if (editId && trip.id === editId) continue;
+
+      if (!trip.start_date || !trip.end_date) continue;
+
+      const existingStart = new Date(trip.start_date);
+      const existingEnd = new Date(trip.end_date);
+
+      if (newStart <= existingEnd && newEnd >= existingStart) {
+        return trip;
+      }
+    }
+
+    return null;
+  };
+
+  // ✅ 🔥 WATCH DATE CHANGE (NEW)
+  useEffect(() => {
+    const conflict = checkDateConflict(form.start_date, form.end_date);
+    setConflictTrip(conflict);
+  }, [form.start_date, form.end_date]);
 
   // ✅ ADD EXPENSE
   const addExpense = async (e) => {
@@ -86,31 +171,27 @@ export default function Trips() {
       return;
     }
 
-    try {
-      await fetch("http://127.0.0.1:8000/api/expenses/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          category: expenseForm.category,
-          amount: parseFloat(expenseForm.amount),
-          trip: selectedTrip.id,
-        }),
-      });
+    await fetch("http://127.0.0.1:8000/api/expenses/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        category: expenseForm.category,
+        amount: parseFloat(expenseForm.amount),
+        trip: selectedTrip.id,
+      }),
+    });
 
-      fetchExpenses(selectedTrip.id);
-      setExpenseForm({ category: '', amount: '' });
-
-    } catch (err) {
-      console.error(err);
-    }
+    fetchAllExpenses();
+    fetchExpenses(selectedTrip.id);
+    setExpenseForm({ category: '', amount: '' });
   };
 
-  // ✅ LOAD TRIPS
   useEffect(() => {
     fetchTrips();
+    fetchAllExpenses();
   }, []);
 
   return (
@@ -120,8 +201,11 @@ export default function Trips() {
       <div className="flex justify-between items-center mb-12">
         <h2 className="text-5xl font-black text-white">Journeys</h2>
 
-        <button 
-          onClick={() => setIsModalOpen(true)}
+        <button
+          onClick={() => {
+            setIsModalOpen(true);
+            setEditId(null);
+          }}
           className="bg-blue-600 text-white px-8 py-4 rounded-3xl font-black flex items-center gap-2"
         >
           <Plus size={20} /> New Trip
@@ -130,34 +214,77 @@ export default function Trips() {
 
       {/* TRIPS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {Array.isArray(trips) && trips.map((trip) => (
-          <div 
-            key={trip.id}
-            className="bento-card cursor-pointer text-white"
-            onClick={() => {
-              setSelectedTrip(trip);
-              fetchExpenses(trip.id);
-            }}
-          >
-            <Globe size={28} className="mb-4" />
+        {trips.map((trip) => {
+          const spent = getTotalExpense(trip.id);
+          const remaining = trip.budget - spent;
+          const isExceeded = remaining < 0;
 
-            <h3 className="text-xl font-bold">{trip.name}</h3>
+          return (
+            <div
+              key={trip.id}
+              className="bento-card cursor-pointer text-white p-6 space-y-2 relative"
+              onClick={() => {
+                setSelectedTrip(trip);
+                fetchExpenses(trip.id);
+              }}
+            >
 
-            <p className="text-sm text-gray-300 flex items-center gap-2">
-              <Calendar size={14} /> {trip.date || "No Date"}
-            </p>
+              {/* ICONS */}
+              <div className="absolute top-4 right-4 flex gap-3">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleEdit(trip);
+                  }}
+                  className="text-blue-400 hover:text-blue-600"
+                >
+                  <Pencil size={18} />
+                </button>
 
-            <p className="mt-4 font-bold text-blue-400">
-              ₹{trip.budget}
-            </p>
-          </div>
-        ))}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(trip.id);
+                  }}
+                  className="text-red-400 hover:text-red-600"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+
+              <Globe size={28} />
+
+              <h3 className="text-xl font-bold">{trip.name}</h3>
+
+              {/* ✅ DATE RANGE DISPLAY */}
+              <p className="text-sm text-gray-300 flex items-center gap-2">
+                <Calendar size={14} />
+                {trip.start_date && trip.end_date
+                  ? `${new Date(trip.start_date).toLocaleDateString()} → ${new Date(trip.end_date).toLocaleDateString()}`
+                  : "No Dates"}
+              </p>
+
+              <p className="font-bold text-blue-400">
+                Budget: ₹{trip.budget}
+              </p>
+
+              <p className={`font-bold ${isExceeded ? "text-red-500" : "text-emerald-400"}`}>
+                Remaining: ₹{remaining}
+              </p>
+
+              {isExceeded && (
+                <p className="text-red-400 text-sm font-bold">
+                  ⚠ Budget Exceeded!
+                </p>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* EXPENSES DISPLAY */}
+      {/* EXPENSES */}
       {selectedTrip && (
         <div className="mt-10">
-
           <h2 className="text-2xl font-bold mb-4 text-white">
             Expenses for {selectedTrip.name}
           </h2>
@@ -172,9 +299,7 @@ export default function Trips() {
             ))
           )}
 
-          {/* ADD EXPENSE FORM */}
           <form onSubmit={addExpense} className="mt-6 flex gap-4 text-white">
-
             <input
               required
               placeholder="Category"
@@ -199,7 +324,6 @@ export default function Trips() {
             <button className="bg-blue-600 text-white px-6 rounded-xl">
               Add
             </button>
-
           </form>
         </div>
       )}
@@ -210,49 +334,105 @@ export default function Trips() {
 
           <div className="bento-card w-full max-w-md relative">
 
-            <button 
-              onClick={() => setIsModalOpen(false)} 
+            <button
+              onClick={() => setIsModalOpen(false)}
               className="absolute top-4 right-4 text-white"
             >
               <X />
             </button>
 
             <h3 className="text-2xl font-black text-white mb-6">
-              Add Trip
+              {editId ? "Edit Trip" : "Add Trip"}
             </h3>
 
-            <form onSubmit={addTrip} className="space-y-4">
+            <form onSubmit={addTrip} className="space-y-5">
 
-              <input
-                required
-                placeholder="Destination"
-                className="input-glass"
-                value={form.dest}
-                onChange={(e) => setForm({ ...form, dest: e.target.value })}
-              />
+              {/* DESTINATION */}
+              <div className="space-y-1">
+                <label className="text-sm text-white/70 font-bold">Destination</label>
+                <input
+                  required
+                  placeholder="Enter destination"
+                  className="input-glass w-full"
+                  value={form.dest}
+                  onChange={(e) => setForm({ ...form, dest: e.target.value })}
+                />
+              </div>
 
-              <input
-                type="date"
-                className="input-glass"
-                value={form.date}
-                onChange={(e) => setForm({ ...form, date: e.target.value })}
-              />
+              {/* DATES SIDE BY SIDE */}
+              <div className="grid grid-cols-2 gap-4">
 
-              <input
-                required
-                type="number"
-                placeholder="Budget"
-                className="input-glass"
-                value={form.budget}
-                onChange={(e) => setForm({ ...form, budget: e.target.value })}
-              />
+                {/* START DATE */}
+                <div className="space-y-1">
+                  <label className="text-sm text-white/70 font-bold">Start Date</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      required
+                      className="input-glass w-full pr-10"
+                      value={form.start_date}
+                      onChange={(e) =>
+                        setForm({ ...form, start_date: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
 
-              <button className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold">
-                Save
+                {/* END DATE */}
+                <div className="space-y-1">
+                  <label className="text-sm text-white/70 font-bold">End Date</label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      required
+                      className="input-glass w-full pr-10"
+                      value={form.end_date}
+                      onChange={(e) =>
+                        setForm({ ...form, end_date: e.target.value })
+                      }
+                    />
+                  </div>
+                </div>
+
+              </div>
+              {/* ✅ WARNING UI */}
+              {conflictTrip && (
+                <div className="text-red-400 bg-red-500/10 p-2 rounded text-sm">
+                  ⚠ Trip overlaps with <b>{conflictTrip.name}</b>
+                </div>
+              )}
+
+
+              {/* BUDGET */}
+              <div className="space-y-1">
+                <label className="text-sm text-white/70 font-bold">Budget</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-0 text-white/40">₹</span>
+                  <input
+                    required
+                    type="number"
+                    placeholder="Enter budget"
+                    className="input-glass pl-8 w-full"
+                    value={form.budget}
+                    onChange={(e) =>
+                      setForm({ ...form, budget: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              {/* BUTTON */}
+              <button
+                disabled={conflictTrip}
+                className={`w-full py-4 rounded-xl font-bold text-lg ${conflictTrip
+                    ? "bg-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                  }`}
+              >
+                Save Trip
               </button>
 
             </form>
-
           </div>
         </div>
       )}

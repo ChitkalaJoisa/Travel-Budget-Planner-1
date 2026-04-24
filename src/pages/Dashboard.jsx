@@ -1,85 +1,47 @@
-
-
 import React, { useState, useEffect } from 'react';
-import { Wallet, Zap, Plus, X, MapPin, Calendar } from 'lucide-react';
+import { Wallet, Zap, MapPin, Calendar } from 'lucide-react';
 
-export default function Dashboard() {
-  const [showTripModal, setShowTripModal] = useState(false);
+export default function Dashboard({ setView }) {
 
   const [trips, setTrips] = useState([]);
   const [expenses, setExpenses] = useState([]);
 
-  const [newTrip, setNewTrip] = useState({
-    destination: '',
-    budget: '',
-    date: ''
-  });
-
   // ✅ FETCH TRIPS
-const fetchTrips = async () => {
-  try {
-    const token = localStorage.getItem("access");
+  const fetchTrips = async () => {
+    try {
+      const token = localStorage.getItem("access");
 
-    const res = await fetch("http://127.0.0.1:8000/api/trips/", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      const res = await fetch("http://127.0.0.1:8000/api/trips/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const data = await res.json();
-    setTrips(Array.isArray(data) ? data : []);  // ✅ FIX ALSO HERE
-  } catch (err) {
-    console.error(err);
-  }
-};
+      const data = await res.json();
+      setTrips(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // ✅ FETCH EXPENSES
-const fetchExpenses = async () => {
-  try {
-    const token = localStorage.getItem("access");
+  const fetchExpenses = async () => {
+    try {
+      const token = localStorage.getItem("access");
 
-    const res = await fetch("http://127.0.0.1:8000/api/expenses/", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
+      const res = await fetch("http://127.0.0.1:8000/api/expenses/", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
 
-    const data = await res.json();
-    setExpenses(Array.isArray(data) ? data : []);  // ✅ FIX
-  } catch (err) {
-    console.error(err);
-  }
-};
+      const data = await res.json();
+      setExpenses(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-  // ✅ ADD TRIP (POST)
-const handleAddTrip = async (e) => {
-  e.preventDefault();
-
-  try {
-    const token = localStorage.getItem("access");
-
-    await fetch("http://127.0.0.1:8000/api/trips/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // ✅ IMPORTANT
-      },
-      body: JSON.stringify({
-        name: newTrip.destination,
-        budget: parseFloat(newTrip.budget),
-      }),
-    });
-
-    fetchTrips();
-    setShowTripModal(false);
-    setNewTrip({ destination: '', budget: '', date: '' });
-
-  } catch (err) {
-    console.error(err);
-  }
-};
-
-  // ✅ LOAD DATA
   useEffect(() => {
     fetchTrips();
     fetchExpenses();
@@ -122,11 +84,12 @@ const handleAddTrip = async (e) => {
 
       </div>
 
-      {/* ACTIONS */}
+      {/* ACTION */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
+        {/* ✅ FIXED BUTTON */}
         <button 
-          onClick={() => setShowTripModal(true)}
+          onClick={() => setView("trips")}
           className="bento-card group flex items-center gap-6 hover:border-blue-400 text-left"
         >
           <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-all duration-500">
@@ -164,7 +127,9 @@ const handleAddTrip = async (e) => {
                 <div className="text-right">
                   <Calendar size={16} className="text-slate-300 ml-auto mb-1" />
                   <p className="text-xs font-bold text-slate-500">
-                    {trip.date || "N/A"}
+                    {trip.start_date && trip.end_date
+                      ? `${new Date(trip.start_date).toLocaleDateString()} → ${new Date(trip.end_date).toLocaleDateString()}`
+                      : "N/A"}
                   </p>
                 </div>
               </div>
@@ -173,65 +138,6 @@ const handleAddTrip = async (e) => {
           ))}
         </div>
       </div>
-
-      {/* MODAL */}
-      {showTripModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/20 backdrop-blur-md">
-
-          <div className="bento-card w-full max-w-lg bg-white relative shadow-2xl">
-
-            <button 
-              onClick={() => setShowTripModal(false)} 
-              className="absolute top-6 right-6 text-slate-400"
-            >
-              <X size={24} />
-            </button>
-
-            <h3 className="text-3xl font-black text-slate-900 mb-8">
-              Create New Trip
-            </h3>
-
-            <form onSubmit={handleAddTrip} className="space-y-6">
-
-              <input 
-                required
-                className="input-glass"
-                placeholder="Destination"
-                value={newTrip.destination}
-                onChange={(e) =>
-                  setNewTrip({ ...newTrip, destination: e.target.value })
-                }
-              />
-
-              <input 
-                required
-                type="number"
-                className="input-glass"
-                placeholder="Budget"
-                value={newTrip.budget}
-                onChange={(e) =>
-                  setNewTrip({ ...newTrip, budget: e.target.value })
-                }
-              />
-
-              <input 
-                type="date"
-                className="input-glass"
-                value={newTrip.date}
-                onChange={(e) =>
-                  setNewTrip({ ...newTrip, date: e.target.value })
-                }
-              />
-
-              <button className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black">
-                Save Journey
-              </button>
-
-            </form>
-
-          </div>
-        </div>
-      )}
 
     </div>
   );

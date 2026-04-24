@@ -27,10 +27,14 @@ def register_user(request):
     if serializer.is_valid():
         user = serializer.save()
         tokens = get_tokens(user)
+
         return Response({
             "message": "User registered successfully",
             "tokens": tokens
         })
+
+    # 🔥 ADD THIS LINE
+    print("REGISTER ERRORS:", serializer.errors)
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
