@@ -300,15 +300,21 @@ export default function Trips() {
           )}
 
           <form onSubmit={addExpense} className="mt-6 flex gap-4 text-white">
-            <input
+            <select
               required
-              placeholder="Category"
               className="input-glass"
               value={expenseForm.category}
               onChange={(e) =>
                 setExpenseForm({ ...expenseForm, category: e.target.value })
               }
-            />
+            >
+              <option value="" className="text-black">Select Category</option>
+              <option value="Food" className="text-black">Food</option>
+              <option value="Transport" className="text-black">Transport</option>
+              <option value="Stay" className="text-black">Stay</option>
+              <option value="Shopping" className="text-black">Shopping</option>
+              <option value="Other" className="text-black">Other</option>
+            </select>
 
             <input
               required
@@ -425,8 +431,8 @@ export default function Trips() {
               <button
                 disabled={conflictTrip}
                 className={`w-full py-4 rounded-xl font-bold text-lg ${conflictTrip
-                    ? "bg-gray-500 cursor-not-allowed"
-                    : "bg-blue-600 hover:bg-blue-700 text-white"
+                  ? "bg-gray-500 cursor-not-allowed"
+                  : "bg-blue-600 hover:bg-blue-700 text-white"
                   }`}
               >
                 Save Trip
